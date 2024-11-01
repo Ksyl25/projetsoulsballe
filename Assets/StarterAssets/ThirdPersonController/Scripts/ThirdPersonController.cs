@@ -87,6 +87,12 @@ namespace StarterAssets
         private float _verticalVelocity;
         private float _terminalVelocity = 53.0f;
 
+        private float aimVelocityX;
+        private float aimVelocityZ;
+
+        public bool Etatguns = false;
+        private bool buttonPressed = false; // Nouvelle variable pour suivre l'appui du bouton
+
         // timeout deltatime
         private float _jumpTimeoutDelta;
         private float _fallTimeoutDelta;
@@ -109,6 +115,8 @@ namespace StarterAssets
         private const float _threshold = 0.01f;
 
         private bool _hasAnimator;
+        public GameObject playerFollowCamera;
+        public GameObject AimingCamera;
 
         private bool IsCurrentDeviceMouse
         {
@@ -159,9 +167,105 @@ namespace StarterAssets
             JumpAndGravity();
             GroundedCheck();
             Move();
+            Aimshoot();
+            hasgunss();
         }
 
-        private void LateUpdate()
+        private void Aimshoot()
+        {
+            if (_input.isAiming && !_input.sprint && !_input.jump)
+            {
+                //_input.ishasguns = true;
+                //hasgunss();
+                //lance une animetion 
+                //Debug.Log("lancement animation tir ");
+                playerFollowCamera.SetActive(false);
+                AimingCamera.SetActive(true);
+                _animator.SetBool("AimShoot", _input.isAiming);
+                //point de vue perso
+                Vector3 cameraForward = _mainCamera.transform.forward;
+                Vector3 cameraForwardOnXZ = Vector3.ProjectOnPlane(cameraForward, Vector3.up);
+
+                // Change l'orientation du personnage pour qu'il suive la direction de la caméra
+                transform.rotation = Quaternion.LookRotation(cameraForwardOnXZ, Vector3.up);
+
+                // deplacement perso 
+                // Récupération des valeurs d'input pour le mouvement en mode visée
+                Vector2 inputValue = _input.move;
+                float inputValueX = Mathf.SmoothDamp(_animator.GetFloat("SpeedAimX"), inputValue.x, ref aimVelocityX, 0.1f);
+                float inputValueZ = Mathf.SmoothDamp(_animator.GetFloat("SpeedAimZ"), inputValue.y, ref aimVelocityZ, 0.1f);
+
+                // Mise à jour des paramètres de mouvement en mode visée dans l'Animator
+                _animator.SetFloat("SpeedAimX", inputValueX);
+                _animator.SetFloat("SpeedAimZ", inputValueZ);
+
+            }
+            else
+            {
+                playerFollowCamera.SetActive(true);
+                AimingCamera.SetActive(false);
+                //arrete l'animation 
+                //Debug.Log("arret animation"); //
+                _animator.SetBool("AimShoot", false);
+                //Debug.Log("arret animation");
+            }
+            
+        }
+
+        private void hasgunss()
+        {
+            /*
+            // Si le joueur appuie pour la première fois et que l'état du bouton n'a pas été détecté auparavant
+            if (_input.ishasguns && !buttonPressed )
+            {
+                Debug.Log("debug hasguns");
+                Debug.Log(_input.ishasguns);
+                buttonPressed = true; // Indique que le bouton a été appuyé
+
+                if (!Etatguns) // Si l'arme est actuellement rangée, on la sort
+                {
+                    Etatguns = true; // Met à jour l'état de l'arme
+                    //Debug.Log("Arme prise");
+                    _animator.SetBool("Aiming", _input.ishasguns); // Lance l'animation pour prendre l'arme
+                }
+                else // Si l'arme est déjà sortie, on la range
+                {
+                    Etatguns = false; // Met à jour l'état de l'arme
+                    //Debug.Log("Arme rangée");
+                    _animator.SetBool("Aiming", false); // Lance l'animation pour ranger l'arme
+                }
+            } 
+
+            else if (!_input.ishasguns && buttonPressed )
+            {
+                // Si le joueur a relâché le bouton, on réinitialise la détection pour un futur appui
+                buttonPressed = false;
+            }
+            */
+            if (_input.ishasguns)
+            {
+                //Debug.Log("debug hasguns");
+                //Debug.Log(_input.ishasguns);
+
+                if (!Etatguns) // Si l'arme est actuellement rangée, on la sort
+                {
+                    Etatguns = true; // Met à jour l'état de l'arme
+                    //Debug.Log("Arme prise");
+                    _animator.SetBool("Aiming", _input.ishasguns); // Lance l'animation pour prendre l'arme
+                }
+                else  // Si l'arme est déjà sortie, on la range
+                {
+                    Etatguns = false; // Met à jour l'état de l'arme
+                                      //Debug.Log("Arme rangée");
+                    _animator.SetBool("Aiming", false); // Lance l'animation pour ranger l'arme
+                }
+
+
+                _input.ishasguns = false;
+            }
+        }
+
+            private void LateUpdate()
         {
             CameraRotation();
         }

@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 #if ENABLE_INPUT_SYSTEM
 using UnityEngine.InputSystem;
@@ -12,8 +13,10 @@ namespace StarterAssets
 		public Vector2 look;
 		public bool jump;
 		public bool sprint;
+		public bool isAiming;
+        public bool ishasguns = false;
 
-		[Header("Movement Settings")]
+        [Header("Movement Settings")]
 		public bool analogMovement;
 
 		[Header("Mouse Cursor Settings")]
@@ -36,17 +39,37 @@ namespace StarterAssets
 
 		public void OnJump(InputValue value)
 		{
-			JumpInput(value.isPressed);
-		}
+            //Debug.Log(jump);
+            JumpInput(value.isPressed);
+			/*Debug.Log("lavariable jump:");
+			Debug.Log(jump);
+            Debug.Log(ishasguns);*/
+        }
 
 		public void OnSprint(InputValue value)
 		{
 			SprintInput(value.isPressed);
-		}
+           // Debug.Log("saut ok");
+        }
+        public void OnAiming(InputValue value)
+        {
+			//clique sur tirer 
+            //isAiming=value.isPressed;
+            isAimingf(value.isPressed);
+            //Debug.Log("vise ok");
+        }
+        public void OnHasguns1(InputValue value)
+        {
+            //isAiming=value.isPressed;
+            //Debug.Log(ishasguns);
+            ishasgunsf(value.isPressed);
+            /*Debug.Log("la variable hasguns");
+            Debug.Log(ishasguns);*/
+        }
 #endif
 
 
-		public void MoveInput(Vector2 newMoveDirection)
+        public void MoveInput(Vector2 newMoveDirection)
 		{
 			move = newMoveDirection;
 		} 
@@ -66,7 +89,17 @@ namespace StarterAssets
 			sprint = newSprintState;
 		}
 
-		private void OnApplicationFocus(bool hasFocus)
+        public void isAimingf(bool newAimingState)
+        {
+            isAiming = newAimingState;
+        }
+
+        public void ishasgunsf(bool newhasgunsState)
+        {
+            ishasguns = newhasgunsState;
+        }
+
+        private void OnApplicationFocus(bool hasFocus)
 		{
 			SetCursorState(cursorLocked);
 		}
