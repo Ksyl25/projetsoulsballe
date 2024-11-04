@@ -1,6 +1,8 @@
 ﻿ using UnityEngine;
 #if ENABLE_INPUT_SYSTEM 
 using UnityEngine.InputSystem;
+using MyBullet01;
+
 #endif
 
 /* Note: animations are called via the controller for both the character and capsule using animator null checks
@@ -117,6 +119,27 @@ namespace StarterAssets
         private bool _hasAnimator;
         public GameObject playerFollowCamera;
         public GameObject AimingCamera;
+        public GameObject weapon01;
+        public GameObject weapon02;
+        public GameObject muzzleFlashPrefab;
+        public GameObject bulletTrailPrefab;
+        public AudioSource fireSound;
+        public ParticleSystem fire1;
+        public ParticleSystem fire2;
+
+        // Le prefab du projectile (à assigner depuis l'éditeur)
+        public GameObject bulletPrefab;
+        // Le point de tir sur l'arme (à assigner depuis l'éditeur)
+        public Transform firingPoint01;
+        public Transform firingPoint02;
+        // La vitesse du projectile (peut être ajustée dans l'inspecteur)
+        public float projectileSpeed = 20f;
+
+        public float fireRate = 0.22f;  // Environ 2 tirs par seconde
+
+        private float nextFireTime = 0f;
+
+        public GameObject reticleCanvas;
 
         private bool IsCurrentDeviceMouse
         {
@@ -158,6 +181,9 @@ namespace StarterAssets
             // reset our timeouts on start
             _jumpTimeoutDelta = JumpTimeout;
             _fallTimeoutDelta = FallTimeout;
+
+            Desactiveguns();
+            reticleCanvas.SetActive(false);
         }
 
         private void Update()
@@ -169,6 +195,7 @@ namespace StarterAssets
             Move();
             Aimshoot();
             hasgunss();
+            GunsManager();
         }
 
         private void Aimshoot()
@@ -179,9 +206,24 @@ namespace StarterAssets
                 //hasgunss();
                 //lance une animetion 
                 //Debug.Log("lancement animation tir ");
+                //Activeguns();
+
+                //passage en mode vise 
                 playerFollowCamera.SetActive(false);
                 AimingCamera.SetActive(true);
+                reticleCanvas.SetActive(true);
+                
+
                 _animator.SetBool("AimShoot", _input.isAiming);
+                //tir
+                if (Time.time > nextFireTime)
+                {
+                    // Définir le moment du prochain tir
+                    nextFireTime = Time.time + fireRate;
+                    Shoot();
+                }
+                
+
                 //point de vue perso
                 Vector3 cameraForward = _mainCamera.transform.forward;
                 Vector3 cameraForwardOnXZ = Vector3.ProjectOnPlane(cameraForward, Vector3.up);
@@ -204,44 +246,81 @@ namespace StarterAssets
             {
                 playerFollowCamera.SetActive(true);
                 AimingCamera.SetActive(false);
+                reticleCanvas.SetActive(false);
+                fire1.Stop();
+                fire2.Stop();
                 //arrete l'animation 
                 //Debug.Log("arret animation"); //
                 _animator.SetBool("AimShoot", false);
                 //Debug.Log("arret animation");
+                //Desactiveguns();
             }
             
+        }
+        private void GunsManager()
+        {
+            if (Etatguns || _input.isAiming)
+            {
+                Activeguns();
+            }
+        }
+
+        private void Shoot()
+        {
+            // Crée un rayon à partir du centre de l'écran vers l'avant
+            Ray ray = Camera.main.ScreenPointToRay(new Vector3(Screen.width / 2, Screen.height / 2));
+            RaycastHit hit;
+
+            Vector3 targetPoint;
+            float dureeDebugRay = 2.0f;
+            float distanceMax = 100f;
+
+            // Si le rayon touche un objet, fixe la cible à ce point
+            if (Physics.Raycast(ray, out hit))
+            {
+                targetPoint = hit.point; // Cible l’endroit d’impact
+                Debug.DrawRay(ray.origin, ray.direction * hit.distance, Color.red, dureeDebugRay);
+                Debug.DrawRay(hit.point, Vector3.up * 0.5f, Color.yellow, dureeDebugRay);
+
+            }
+            else
+            {
+                targetPoint = ray.GetPoint(100); // Sinon, cible un point distant
+                //targetPoint = Camera.main.transform.forward;
+                Debug.DrawRay(ray.origin, ray.direction * distanceMax, Color.blue, dureeDebugRay);
+            }
+
+
+            // Instancier le projectile au niveau du firingPoint avec la rotation du point de tir
+            GameObject projectile01 = Instantiate(bulletPrefab, firingPoint01.position, Quaternion.identity);
+            GameObject projectile02 = Instantiate(bulletPrefab, firingPoint02.position, Quaternion.identity);
+
+            // Récupérer le composant Rigidbody du projectile
+
+            Bullet bulletScript01 = projectile01.GetComponent<Bullet>();
+            Bullet bulletScript02 = projectile02.GetComponent<Bullet>();
+
+            
+            if (bulletScript01 != null && bulletScript02 !=null )
+            {
+                bulletScript01.Initialize(targetPoint); // Méthode que vous aurez définie pour l'initialisation
+                bulletScript02.Initialize(targetPoint);
+            }
+            else
+            {
+                Debug.LogWarning("BulletScript n'a pas été trouvé sur le projectile !");
+                //Instantiate(muzzleFlashPrefab, transform.position, transform.rotation);
+            }
+            fireSound.Play();
+            fire1.Play();
+            fire2.Play();
+
+
+
         }
 
         private void hasgunss()
         {
-            /*
-            // Si le joueur appuie pour la première fois et que l'état du bouton n'a pas été détecté auparavant
-            if (_input.ishasguns && !buttonPressed )
-            {
-                Debug.Log("debug hasguns");
-                Debug.Log(_input.ishasguns);
-                buttonPressed = true; // Indique que le bouton a été appuyé
-
-                if (!Etatguns) // Si l'arme est actuellement rangée, on la sort
-                {
-                    Etatguns = true; // Met à jour l'état de l'arme
-                    //Debug.Log("Arme prise");
-                    _animator.SetBool("Aiming", _input.ishasguns); // Lance l'animation pour prendre l'arme
-                }
-                else // Si l'arme est déjà sortie, on la range
-                {
-                    Etatguns = false; // Met à jour l'état de l'arme
-                    //Debug.Log("Arme rangée");
-                    _animator.SetBool("Aiming", false); // Lance l'animation pour ranger l'arme
-                }
-            } 
-
-            else if (!_input.ishasguns && buttonPressed )
-            {
-                // Si le joueur a relâché le bouton, on réinitialise la détection pour un futur appui
-                buttonPressed = false;
-            }
-            */
             if (_input.ishasguns)
             {
                 //Debug.Log("debug hasguns");
@@ -250,22 +329,55 @@ namespace StarterAssets
                 if (!Etatguns) // Si l'arme est actuellement rangée, on la sort
                 {
                     Etatguns = true; // Met à jour l'état de l'arme
-                    //Debug.Log("Arme prise");
+                                     //Debug.Log("Arme prise");
+
+                    // Activez l'objet arme
+                    //Activeguns();
+
                     _animator.SetBool("Aiming", _input.ishasguns); // Lance l'animation pour prendre l'arme
                 }
                 else  // Si l'arme est déjà sortie, on la range
                 {
+                    
                     Etatguns = false; // Met à jour l'état de l'arme
                                       //Debug.Log("Arme rangée");
                     _animator.SetBool("Aiming", false); // Lance l'animation pour ranger l'arme
+
+                    // Désactivez l'objet arme
+                   //Desactiveguns();
+
                 }
 
 
                 _input.ishasguns = false;
             }
         }
+        public void Activeguns()
+        {
+            if (weapon01 != null)
+            {
+                weapon01.SetActive(true);
+            }
+            if (weapon02 != null)
+            {
+                weapon02.SetActive(true);
+            }
 
-            private void LateUpdate()
+        }
+        public void Desactiveguns()
+        {
+            if (weapon01 != null)
+            {
+                weapon01.SetActive(false);
+            }
+            if (weapon02 != null)
+            {
+                weapon02.SetActive(false);
+            }
+
+        }
+
+        private void LateUpdate()
         {
             CameraRotation();
         }
